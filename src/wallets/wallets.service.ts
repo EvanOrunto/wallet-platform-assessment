@@ -110,17 +110,19 @@ export class WalletsService {
   }
 
   async withdraw(id: string, dto: WithdrawDto) {
-    const wallet = await this.walletModel.findById(id);
-    if (!wallet) {
-      throw new NotFoundException(`Wallet ${id} not found`);
-    }
+    const wallet = await this.walletModel.findOneAndUpdate(
+      { _id: id, balance: { $gte: dto.amount } },
+      { $inc: { balance: -dto.amount, version: 1 } },
+      { new: true },
+    );
 
-    if (wallet.balance < dto.amount) {
+    if (!wallet) {
+      const existing = await this.walletModel.findById(id);
+      if (!existing) {
+        throw new NotFoundException(`Wallet ${id} not found`);
+      }
       throw new BadRequestException('Insufficient balance');
     }
-
-    wallet.balance -= dto.amount;
-    await wallet.save();
 
     const transaction = await this.transactionsService.create({
       walletId: wallet.id,
