@@ -29,7 +29,13 @@ export class RabbitMQService implements OnModuleInit, OnModuleDestroy {
       setup: (channel: ConfirmChannel) =>
         Promise.all([
           channel.assertExchange(this.exchange, 'topic', { durable: true }),
-          channel.assertQueue(this.transferQueue, { durable: true }),
+          channel.assertExchange(`${this.exchange}.dlx`, 'topic', { durable: true }),
+          channel.assertQueue(`${this.transferQueue}.dlq`, { durable: true }),
+          channel.bindQueue(`${this.transferQueue}.dlq`, `${this.exchange}.dlx`, '#'),
+          channel.assertQueue(this.transferQueue, {
+            durable: true,
+            deadLetterExchange: `${this.exchange}.dlx`,
+          }),
           channel.bindQueue(this.transferQueue, this.exchange, 'transfer.*'),
         ]),
     });

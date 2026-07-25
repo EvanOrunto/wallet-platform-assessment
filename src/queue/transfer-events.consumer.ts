@@ -53,7 +53,7 @@ export class TransferEventsConsumer implements OnModuleInit {
       channel.ack(message);
     } catch (error) {
       this.logger.error(`Failed to process transfer event: ${(error as Error).message}`);
-      channel.ack(message);
+      channel.nack(message, false, false);
     }
   }
 
@@ -61,6 +61,11 @@ export class TransferEventsConsumer implements OnModuleInit {
     const transfer = await this.transferModel.findById(event.transferId);
     if (!transfer) {
       this.logger.warn(`Transfer ${event.transferId} not found, skipping`);
+      return;
+    }
+
+    if (transfer.status === TransferStatus.COMPLETED) {
+      this.logger.warn(`Transfer ${event.transferId} already completed, skipping`);
       return;
     }
 
