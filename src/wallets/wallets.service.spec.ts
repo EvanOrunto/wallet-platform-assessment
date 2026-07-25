@@ -35,6 +35,7 @@ describe('WalletsService', () => {
       create: jest.fn(),
       findById: jest.fn(),
       findByIdAndUpdate: jest.fn(),
+      findOneAndUpdate: jest.fn(),
     };
     transferModel = {
       create: jest.fn(),
@@ -170,6 +171,7 @@ describe('WalletsService', () => {
         50,
         150,
       );
+      expect(redisService.invalidateBalance).toHaveBeenCalledWith(walletId);
       expect(result).toBe(updatedWallet);
     });
 
@@ -198,6 +200,7 @@ describe('WalletsService', () => {
         { new: true },
       );
       expect(ledgerService.recordDebit).toHaveBeenCalledWith(walletId, transaction._id, 40, 60);
+      expect(redisService.invalidateBalance).toHaveBeenCalledWith(walletId);
       expect(result).toBe(updatedWallet);
     });
 
@@ -293,6 +296,7 @@ describe('WalletsService', () => {
         expect.objectContaining({ transferId: createdTransfer._id.toString(), amount: 30 }),
         mockSession,
       );
+      expect(redisService.invalidateBalance).toHaveBeenCalledWith(fromId.toString());
       expect(result).toBe(createdTransfer);
     });
 
