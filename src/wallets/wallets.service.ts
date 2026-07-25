@@ -229,36 +229,85 @@ export class WalletsService {
       throw new NotFoundException(`Wallet ${id} not found`);
     }
 
-    const transactions = await this.transactionModel
-      .find({ walletId: id })
+    // Step 1: Push math to the database to avoid loading all transactions into memory
+    const statsResult = await this.transactionModel.aggregate([
+      { $match: { walletId: wallet._id } },
+      {
+        $group: {
+          _id: null,
+          transactionCount: { $sum: 1 },
+          totalDeposited: {
+            $sum: {
+              $cond: [
+                {
+                  $in: [
+                    '$type',
+                    [TransactionType.DEPOSIT, TransactionType.TRANSFER_IN],
+                  ],
+                },
+                '$amount',
+                0,
+              ],
+            },
+          },
+          totalWithdrawn: {
+            $sum: {
+              $cond: [
+                {
+                  $in: [
+                    '$type',
+                    [TransactionType.WITHDRAWAL, TransactionType.TRANSFER_OUT],
+                  ],
+                },
+                '$amount',
+                0,
+              ],
+            },
+          },
+        },
+      },
+    ]);
+
+    const stats = statsResult[0] || {
+      transactionCount: 0,
+      totalDeposited: 0,
+      totalWithdrawn: 0,
+    };
+
+    // Fetch only the top 10 recent transactions
+    const recentTransactions = await this.transactionModel
+      .find({ walletId: wallet._id })
       .sort({ createdAt: -1 })
+      .limit(10)
       .exec();
 
-    let totalDeposited = 0;
-    let totalWithdrawn = 0;
-    const recentActivity: Array<{
-      transaction: TransactionDocument;
-      entries: LedgerEntryDocument[];
-    }> = [];
+    // Fetch all ledger entries for those 10 transactions in a SINGLE query 
+    const transactionIds = recentTransactions.map((t) => t._id);
+    const allRecentEntries = await this.ledgerEntryModel
+      .find({ transactionId: { $in: transactionIds } })
+      .exec();
 
-    for (const txn of transactions) {
-      const entries = await this.ledgerEntryModel.find({ transactionId: txn._id }).exec();
-
-      if (txn.type === TransactionType.DEPOSIT || txn.type === TransactionType.TRANSFER_IN) {
-        totalDeposited += txn.amount;
-      } else {
-        totalWithdrawn += txn.amount;
+    // Group the ledger entries by transactionId in memory
+    const entriesByTransaction = allRecentEntries.reduce((acc, entry) => {
+      const txId = entry.transactionId.toString();
+      if (!acc[txId]) {
+        acc[txId] = [];
       }
+      acc[txId].push(entry);
+      return acc;
+    }, {} as Record<string, LedgerEntryDocument[]>);
 
-      recentActivity.push({ transaction: txn, entries });
-    }
+    const recentActivity = recentTransactions.map((txn) => ({
+      transaction: txn,
+      entries: entriesByTransaction[txn._id.toString()] || [],
+    }));
 
     return {
       wallet,
-      totalDeposited,
-      totalWithdrawn,
-      transactionCount: transactions.length,
-      recentActivity: recentActivity.slice(0, 10),
+      totalDeposited: stats.totalDeposited,
+      totalWithdrawn: stats.totalWithdrawn,
+      transactionCount: stats.transactionCount,
+      recentActivity,
     };
   }
 }

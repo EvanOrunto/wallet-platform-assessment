@@ -30,3 +30,5 @@ export class LedgerEntry {
 }
 
 export const LedgerEntrySchema = SchemaFactory.createForClass(LedgerEntry);
+
+LedgerEntrySchema.index({ transactionId: 1 });
