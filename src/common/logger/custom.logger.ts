@@ -12,14 +12,14 @@ export class CustomLogger extends ConsoleLogger {
     timestampDiff: string,
   ): string {
     const correlationId = correlationIdStorage.getStore();
-    
+
     // Instead of overriding everything manually, we simply prepend the correlationId to the standard message
     // if it exists in the AsyncLocalStorage context.
     const prefix = correlationId ? `[${correlationId}] ` : '';
-    
+
     const stringifiedMessage = typeof message === 'string' ? message : JSON.stringify(message);
     const newMessage = `${prefix}${stringifiedMessage}`;
-    
+
     return super.formatMessage(
       logLevel,
       newMessage,

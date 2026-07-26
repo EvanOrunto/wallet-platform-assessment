@@ -148,7 +148,9 @@ export class WalletsService {
 
     // Check if this request is a duplicate retry
     if (dto.idempotencyKey) {
-      const existingTransfer = await this.transferModel.findOne({ idempotencyKey: dto.idempotencyKey });
+      const existingTransfer = await this.transferModel.findOne({
+        idempotencyKey: dto.idempotencyKey,
+      });
       if (existingTransfer) {
         return existingTransfer;
       }
@@ -248,10 +250,7 @@ export class WalletsService {
             $sum: {
               $cond: [
                 {
-                  $in: [
-                    '$type',
-                    [TransactionType.DEPOSIT, TransactionType.TRANSFER_IN],
-                  ],
+                  $in: ['$type', [TransactionType.DEPOSIT, TransactionType.TRANSFER_IN]],
                 },
                 '$amount',
                 0,
@@ -262,10 +261,7 @@ export class WalletsService {
             $sum: {
               $cond: [
                 {
-                  $in: [
-                    '$type',
-                    [TransactionType.WITHDRAWAL, TransactionType.TRANSFER_OUT],
-                  ],
+                  $in: ['$type', [TransactionType.WITHDRAWAL, TransactionType.TRANSFER_OUT]],
                 },
                 '$amount',
                 0,
@@ -289,21 +285,24 @@ export class WalletsService {
       .limit(10)
       .exec();
 
-    // Fetch all ledger entries for those 10 transactions in a SINGLE query 
+    // Fetch all ledger entries for those 10 transactions in a SINGLE query
     const transactionIds = recentTransactions.map((t) => t._id);
     const allRecentEntries = await this.ledgerEntryModel
       .find({ transactionId: { $in: transactionIds } })
       .exec();
 
     // Group the ledger entries by transactionId in memory
-    const entriesByTransaction = allRecentEntries.reduce((acc, entry) => {
-      const txId = entry.transactionId.toString();
-      if (!acc[txId]) {
-        acc[txId] = [];
-      }
-      acc[txId].push(entry);
-      return acc;
-    }, {} as Record<string, LedgerEntryDocument[]>);
+    const entriesByTransaction = allRecentEntries.reduce(
+      (acc, entry) => {
+        const txId = entry.transactionId.toString();
+        if (!acc[txId]) {
+          acc[txId] = [];
+        }
+        acc[txId].push(entry);
+        return acc;
+      },
+      {} as Record<string, LedgerEntryDocument[]>,
+    );
 
     const recentActivity = recentTransactions.map((txn) => ({
       transaction: txn,

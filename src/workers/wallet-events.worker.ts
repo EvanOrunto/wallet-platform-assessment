@@ -12,7 +12,7 @@ export class WalletEventsWorker implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(WalletEventsWorker.name);
   private timer: NodeJS.Timeout;
 
-  constructor(@InjectModel(Wallet.name) private readonly walletModel: Model<WalletDocument>) { }
+  constructor(@InjectModel(Wallet.name) private readonly walletModel: Model<WalletDocument>) {}
 
   onModuleInit() {
     this.timer = setInterval(() => this.tick(), 10_000);
@@ -21,7 +21,7 @@ export class WalletEventsWorker implements OnModuleInit, OnModuleDestroy {
   private async tick() {
     const recentWallets = await this.walletModel.find().sort({ updatedAt: -1 }).limit(20).exec();
     for (const wallet of recentWallets) {
-      this.logger.debug(`Wallet ${wallet.id} snapshot balance=${wallet.balance}`);  
+      this.logger.debug(`Wallet ${wallet.id} snapshot balance=${wallet.balance}`);
     }
   }
 
