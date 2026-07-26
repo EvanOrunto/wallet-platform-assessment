@@ -18,6 +18,8 @@ import { TransactionsModule } from './transactions/transactions.module';
 import { WalletsModule } from './wallets/wallets.module';
 import { WorkersModule } from './workers/workers.module';
 
+import { CustomLogger } from './common/logger/custom.logger';
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, load: [configuration] }),
@@ -39,6 +41,7 @@ import { WorkersModule } from './workers/workers.module';
     WorkersModule,
   ],
   providers: [
+    CustomLogger,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
     { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },

@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import * as amqp from 'amqp-connection-manager';
 import { ChannelWrapper } from 'amqp-connection-manager';
 import { ConfirmChannel } from 'amqplib';
-
+import { correlationIdStorage } from '../common/logger/correlation-id.storage';
 @Injectable()
 export class RabbitMQService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(RabbitMQService.name);
@@ -42,8 +42,12 @@ export class RabbitMQService implements OnModuleInit, OnModuleDestroy {
   }
 
   async publish(routingKey: string, payload: Record<string, unknown>): Promise<void> {
+    const correlationId = correlationIdStorage.getStore();
+    const headers = correlationId ? { 'x-correlation-id': correlationId } : undefined;
+
     await this.channelWrapper.publish(this.exchange, routingKey, payload, {
       persistent: true,
+      headers,
     });
     this.logger.log(`Published event ${routingKey}`);
   }
