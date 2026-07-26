@@ -38,6 +38,10 @@ export class RabbitMQService implements OnModuleInit, OnModuleDestroy {
         await channel.bindQueue(this.transferQueue, this.exchange, 'transfer.*');
       },
     });
+
+    this.channelWrapper.on('error', (err) => {
+      this.logger.error('Publisher channel error: ' + err.message);
+    });
   }
 
   async publish(routingKey: string, payload: Record<string, unknown>): Promise<void> {

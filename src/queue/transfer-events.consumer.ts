@@ -47,6 +47,10 @@ export class TransferEventsConsumer implements OnModuleInit, OnModuleDestroy {
       });
       await channel.consume(queue, (message) => this.handleMessage(message, channel));
     });
+
+    this.consumerChannel.on('error', (err) => {
+      this.logger.error('Consumer channel error: ' + err.message);
+    });
   }
 
   async onModuleDestroy() {
