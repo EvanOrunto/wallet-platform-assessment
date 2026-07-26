@@ -26,18 +26,17 @@ export class RabbitMQService implements OnModuleInit, OnModuleDestroy {
 
     this.channelWrapper = this.connection.createChannel({
       json: true,
-      setup: (channel: ConfirmChannel) =>
-        Promise.all([
-          channel.assertExchange(this.exchange, 'topic', { durable: true }),
-          channel.assertExchange(`${this.exchange}.dlx`, 'topic', { durable: true }),
-          channel.assertQueue(`${this.transferQueue}.dlq`, { durable: true }),
-          channel.bindQueue(`${this.transferQueue}.dlq`, `${this.exchange}.dlx`, '#'),
-          channel.assertQueue(this.transferQueue, {
-            durable: true,
-            deadLetterExchange: `${this.exchange}.dlx`,
-          }),
-          channel.bindQueue(this.transferQueue, this.exchange, 'transfer.*'),
-        ]),
+      setup: async (channel: ConfirmChannel) => {
+        await channel.assertExchange(this.exchange, 'topic', { durable: true });
+        await channel.assertExchange(`${this.exchange}.dlx`, 'topic', { durable: true });
+        await channel.assertQueue(`${this.transferQueue}.dlq`, { durable: true });
+        await channel.bindQueue(`${this.transferQueue}.dlq`, `${this.exchange}.dlx`, '#');
+        await channel.assertQueue(this.transferQueue, {
+          durable: true,
+          deadLetterExchange: `${this.exchange}.dlx`,
+        });
+        await channel.bindQueue(this.transferQueue, this.exchange, 'transfer.*');
+      },
     });
   }
 
@@ -58,6 +57,17 @@ export class RabbitMQService implements OnModuleInit, OnModuleDestroy {
 
   getTransferQueue(): string {
     return this.transferQueue;
+  }
+
+  getExchange(): string {
+    return this.exchange;
+  }
+
+  createChannel(setupFn: (channel: ConfirmChannel) => Promise<void>): ChannelWrapper {
+    return this.connection.createChannel({
+      json: true,
+      setup: setupFn,
+    });
   }
 
   async onModuleDestroy() {

@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { ConsumeMessage } from 'amqplib';
 import { Model } from 'mongoose';
@@ -22,7 +22,7 @@ export interface TransferInitiatedEvent {
 }
 
 @Injectable()
-export class TransferEventsConsumer implements OnModuleInit {
+export class TransferEventsConsumer implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(TransferEventsConsumer.name);
 
   constructor(
@@ -34,13 +34,24 @@ export class TransferEventsConsumer implements OnModuleInit {
     private readonly ledgerService: LedgerService,
   ) {}
 
-  onModuleInit() {
-    const channelWrapper = this.rabbitMQService.getChannelWrapper();
-    const queue = this.rabbitMQService.getTransferQueue();
+  private consumerChannel: any;
 
-    channelWrapper.addSetup((channel) =>
-      channel.consume(queue, (message) => this.handleMessage(message, channel)),
-    );
+  onModuleInit() {
+    const queue = this.rabbitMQService.getTransferQueue();
+    const exchange = this.rabbitMQService.getExchange();
+
+    this.consumerChannel = this.rabbitMQService.createChannel(async (channel) => {
+      await channel.assertQueue(queue, {
+        durable: true,
+        deadLetterExchange: `${exchange}.dlx`,
+      });
+      await channel.consume(queue, (message) => this.handleMessage(message, channel));
+    });
+  }
+
+  async onModuleDestroy() {
+    // Rely on RabbitMQService to close the main connection,
+    // which automatically tears down all associated channels.
   }
 
   private async handleMessage(message: ConsumeMessage | null, channel: any) {
