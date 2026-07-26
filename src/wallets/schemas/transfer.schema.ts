@@ -23,7 +23,7 @@ export class Transfer {
   @Prop({ type: String, enum: TransferStatus, default: TransferStatus.PENDING })
   status: TransferStatus;
 
-  @Prop()
+  @Prop({ unique: true, sparse: true })
   idempotencyKey?: string;
 
   @Prop()

@@ -303,6 +303,7 @@ describe('WalletsService', () => {
     it('does not create a second transfer when retried with the same idempotency key', async () => {
       mockWallets(100);
       const createdTransfer = { _id: new Types.ObjectId(), status: 'PENDING' };
+      transferModel.findOne.mockResolvedValueOnce(null).mockResolvedValueOnce(createdTransfer);
       transferModel.create.mockResolvedValue([createdTransfer]);
       transactionModel.create.mockResolvedValue([{ _id: new Types.ObjectId() }]);
 
